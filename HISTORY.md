@@ -1,6 +1,7 @@
 # History
 
 ## Unreleased
+* Respect response `must-revalidate` before serving stale cached content when `cache_control=True`
 * Fix JSON refresh comparisons for mixed-case `Content-Type` values
 * Keep caller-supplied MongoDB clients open when closing MongoDB or GridFS caches
 * Fix unhandled `EOFError` when a cache value fails to deserialize

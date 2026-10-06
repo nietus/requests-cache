@@ -164,6 +164,7 @@ class CacheActions(RichMixin):
         """Determine whether a given cached response is "fresh enough" to satisfy the request,
         based on:
 
+        * must-revalidate (when cache-control is enabled)
         * min-fresh
         * max-stale
         * stale-if-error (if an error has occurred)
