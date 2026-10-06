@@ -1511,3 +1511,37 @@ def test_close__autoclose_off(mock_session):
     with patch.object(mock_session.cache, 'close') as mock_close:
         mock_session.close()
         mock_close.assert_not_called()
+
+
+@pytest.mark.parametrize('stale_if_error', [True, 60])
+def test_must_revalidate__request_error(mock_session, stale_if_error):
+    mock_session.settings.cache_control = True
+    mock_session.settings.stale_if_error = stale_if_error
+    mock_session.mock_adapter.register_uri(
+        'GET',
+        MOCKED_URL,
+        headers={'Cache-Control': 'max-age=60, must-revalidate'},
+        text='original',
+    )
+    response = mock_session.get(MOCKED_URL)
+    mock_session.cache.reset_expiration(timedelta(seconds=-10))
+    mock_session.mock_adapter.register_uri('GET', MOCKED_URL, exc=ConnectionError)
+    with pytest.raises(ConnectionError):
+        mock_session.get(MOCKED_URL)
+    assert not response.from_cache
+
+
+def test_must_revalidate__only_if_cached(mock_session):
+    mock_session.settings.cache_control = True
+    mock_session.settings.stale_if_error = True
+    mock_session.mock_adapter.register_uri(
+        'GET',
+        MOCKED_URL,
+        headers={'Cache-Control': 'max-age=60, must-revalidate'},
+        text='original',
+    )
+    mock_session.get(MOCKED_URL)
+    mock_session.cache.reset_expiration(timedelta(seconds=-10))
+    response = mock_session.get(MOCKED_URL, only_if_cached=True)
+    assert response.status_code == 504
+    assert mock_session.mock_adapter.call_count == 1

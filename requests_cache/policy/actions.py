@@ -172,6 +172,12 @@ class CacheActions(RichMixin):
         if cached_response is None:
             return False
         elif (
+            self._settings.cache_control
+            and cached_response.is_expired
+            and CacheDirectives.from_headers(cached_response.headers).must_revalidate
+        ):
+            return False
+        elif (
             cached_response.expires is None
             or (cached_response.is_expired and self._stale_while_revalidate is True)
             or (error and self._stale_if_error is True)

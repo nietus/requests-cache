@@ -661,3 +661,28 @@ def test_ignored_headers(directive):
     assert actions.expire_after == 1
     assert actions.skip_read is False
     assert actions.skip_write is False
+
+
+@pytest.mark.parametrize('cache_control', [True, False])
+@pytest.mark.parametrize('expired', [True, False])
+@pytest.mark.parametrize(
+    'request_headers, settings_kwargs, error',
+    [
+        ({'Cache-Control': 'max-stale=60'}, {}, False),
+        ({}, {'stale_if_error': True}, True),
+        ({}, {'stale_if_error': 60}, True),
+        ({}, {'stale_while_revalidate': True}, False),
+        ({}, {'stale_while_revalidate': 60}, False),
+    ],
+)
+def test_is_usable__must_revalidate(
+    cache_control, expired, request_headers, settings_kwargs, error
+):
+    settings = CacheSettings(cache_control=cache_control, **settings_kwargs)
+    request = Request(method='GET', url=MOCKED_URL, headers=request_headers)
+    actions = CacheActions.from_request('key', request, settings)
+    response = CachedResponse(
+        headers={'Cache-Control': 'must-revalidate'},
+        expires=utcnow() + timedelta(seconds=-10 if expired else 10),
+    )
+    assert actions.is_usable(response, error=error) is not (cache_control and expired)
